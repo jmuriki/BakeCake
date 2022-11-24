@@ -6,33 +6,25 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-def button(update, _):
-    query = update.callback_query
-    variant = query.data
-    query.answer()
-    query.edit_message_text(text=variant)
-    return variant
-
-
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
-    start_keyboard = [
-        [
-            telegram.InlineKeyboardButton("Подтверждаю)", callback_data="Вы согласились на обработку ПД."),
-            telegram.InlineKeyboardButton("Нет, нет и нет!", callback_data="Вы отказались от обработки ПД."),
-        ],
-        [telegram.InlineKeyboardButton("Для начала, хотел бы взглянуть на торты...", callback_data="Сейчас покажем наш ассортимент:")],
-    ]
-    reply_markup = telegram.InlineKeyboardMarkup(start_keyboard)
     with open(Path("./Согласие на обработку ПД.pdf"), "rb") as file:
         context.bot.send_document(chat_id=update.effective_chat.id, document=file)
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Здравствуйте. Изучите, пожалуйста, бланк согласия на обработку персональных данных (далее - ПД), представленный выше.",
     )
+    start_keyboard = [
+        [
+            telegram.KeyboardButton("Разрешаю обработку моих ПД."),
+            telegram.KeyboardButton("Запрещаю обработку моих ПД."),
+        ],
+        [telegram.KeyboardButton("Для начала, хотел бы взглянуть на торты...")],
+    ]
+    reply_markup = telegram.ReplyKeyboardMarkup(start_keyboard, one_time_keyboard=True)
     context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Вы согласны на обработку персональных данных? Для продолжения выберите один из вариантов:",
-        reply_markup=reply_markup
+        text="Вы согласны на обработку персональных данных? Для продолжения выберите один из предложенных вариантов:",
+        reply_markup=reply_markup,
     )
 
 
@@ -47,7 +39,6 @@ def main():
     dispatcher = updater.dispatcher
     dispatcher.add_handler(telegram.ext.CommandHandler('help', help_command))
     dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
-    variant = dispatcher.add_handler(telegram.ext.CallbackQueryHandler(button))
     updater.start_polling(1)
     updater.idle()
 
