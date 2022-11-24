@@ -1,45 +1,53 @@
 import os
+import telegram
+import telegram.ext
 
+from pathlib import Path
 from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackContext, CallbackQueryHandler
 
 
 def button(update, _):
     query = update.callback_query
     variant = query.data
     query.answer()
-    query.edit_message_text(text=f"Вы {variant}")
+    query.edit_message_text(text=variant)
+    return variant
 
 
-def start(update: Update, context: CallbackContext):
+def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     start_keyboard = [
         [
-            InlineKeyboardButton("Подтверждаю)", callback_data="согласились на обработку ПД."),
-            InlineKeyboardButton("Нет, нет и нет!", callback_data="отказались от обработки ПД."),
+            telegram.InlineKeyboardButton("Подтверждаю)", callback_data="Вы согласились на обработку ПД."),
+            telegram.InlineKeyboardButton("Нет, нет и нет!", callback_data="Вы отказались от обработки ПД."),
         ],
-        [InlineKeyboardButton("Хотел бы для начала взглянуть на торты.", callback_data="захотели изучить ассортимент.")],
+        [telegram.InlineKeyboardButton("Для начала, хотел бы взглянуть на торты...", callback_data="Сейчас покажем наш ассортимент:")],
     ]
-    reply_markup = InlineKeyboardMarkup(start_keyboard)
+    reply_markup = telegram.InlineKeyboardMarkup(start_keyboard)
+    with open(Path("./Согласие на обработку ПД.pdf"), "rb") as file:
+        context.bot.send_document(chat_id=update.effective_chat.id, document=file)
     context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Здравствуйте. Подтвердите, пожалуйста, своё согласие на обработку персональных данных (далее - ПД):",
+        text="Здравствуйте. Изучите, пожалуйста, бланк согласия на обработку персональных данных (далее - ПД), представленный выше.",
+    )
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Вы согласны на обработку персональных данных? Для продолжения выберите один из вариантов:",
         reply_markup=reply_markup
     )
 
 
 def help_command(update, _):
-    update.message.reply_text("Используйте `/start` для начала / возврата к первому шагу.")
+    update.message.reply_text("Используйте `/start` для начала или возврата к первому шагу.")
 
 
 def main():
     load_dotenv()
     token = os.environ["TG_BOT_KEY"]
-    updater = Updater(token=token)
+    updater = telegram.ext.Updater(token=token)
     dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler('help', help_command))
-    dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CallbackQueryHandler(button))
+    dispatcher.add_handler(telegram.ext.CommandHandler('help', help_command))
+    dispatcher.add_handler(telegram.ext.CommandHandler('start', start))
+    variant = dispatcher.add_handler(telegram.ext.CallbackQueryHandler(button))
     updater.start_polling(1)
     updater.idle()
 
