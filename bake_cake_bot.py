@@ -1,12 +1,31 @@
 import os
 
 from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import Updater, CallbackContext, CommandHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackContext, CallbackQueryHandler
+
+
+def build_menu(
+        buttons,
+        n_columns,
+        header_buttons=None,
+        footer_buttons=None
+    ):
+    menu = [buttons[i:i+n_columns] for i in range(0, len(buttons), n_columns)]
+    if header_buttons:
+        menu.insert(0, [header_buttons])
+    if footer_buttons:
+        menu.append([footer_buttons])
+    return menu
 
 
 def start(update: Update, context: CallbackContext):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Стартовое сообщение.")
+    pd_buttons = [
+        InlineKeyboardButton("Подтверждаю)", callback_data="True"),
+        InlineKeyboardButton("Нет, нет и нет!", callback_data="False"),
+    ]
+    reply_markup = InlineKeyboardMarkup(build_menu(pd_buttons, n_columns=2))
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Здравствуйте. Подтвердите, пожалуйста, своё согласие на обработку персональных данных:", reply_markup=reply_markup)
 
 
 def main():
