@@ -254,12 +254,16 @@ def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext)
 
 
 def specify_label(update: telegram.Update, context: telegram.ext.CallbackContext):
-    message = "Если у Вас есть желание сделать надпись, пришлите сначала её текст ответным сообщением, а потом нажмите соответствующую кнопку."
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Мы можем разместить на торте любую надпись, например: «С днем рождения!»"
+    )
+    message = "Если у Вас есть желание сделать надпись, пришлите сначала её текст ответным сообщением, а потом нажмите соответствующую кнопку меню."
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору декора")],
         [
             telegram.KeyboardButton("Без надписи"),
-            telegram.KeyboardButton("С надписью\n(+500)"),
+            telegram.KeyboardButton("Хочу надпись!\n(+500)"),
         ],
         [
             telegram.KeyboardButton("Оформить заказ"),
@@ -359,7 +363,7 @@ def main():
         "Уже достаточно декора": specify_label,
         "Вернуться к выбору декора": choose_decor,
         "Без надписи": specify_order,
-        "С надписью\n(+500)": specify_order,
+        "Хочу надпись!\n(+500)": specify_order,
         "Вернуться к выбору надписи": specify_label,
         "Оформить заказ": verify_order,
         "Подтвердить и оплатить": get_permission,
