@@ -152,7 +152,7 @@ def surprise_client(update: telegram.Update, context: telegram.ext.CallbackConte
 def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Выберите количество уровней торта:"
     keyboard = [
-        [telegram.KeyboardButton("Вернуться в каталог тортов")],
+        [telegram.KeyboardButton("Посмотреть каталог тортов")],
         [
             telegram.KeyboardButton("1 уровень\n(+400р)"),
             telegram.KeyboardButton("2 уровня\n(+750р)"),
@@ -275,12 +275,20 @@ def specify_label(update: telegram.Update, context: telegram.ext.CallbackContext
 
 
 def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext):
-    message = "Почти всё! Осталось подтвердить заказ или же... можно собрать ещё один торт)"
+    message = "Почти всё! Осталось уточнить детали доставки или же... можно собрать ещё один торт)"
     keyboard = [
-        [telegram.KeyboardButton("Вернуться к выбору надписи")],
         [
-            telegram.KeyboardButton("Оформить заказ"),
+            telegram.KeyboardButton("Изменить детали торта"),
             telegram.KeyboardButton("Собрать ещё один торт"),
+        ],
+        [
+            telegram.KeyboardButton("Адрес доставки"),
+            telegram.KeyboardButton("Дата доставки"),
+            telegram.KeyboardButton("Время доставки"),
+        ],
+        [
+            telegram.KeyboardButton("Оставить комментарий"),
+            telegram.KeyboardButton("Оплатить заказ"),
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
@@ -322,7 +330,7 @@ def main():
         "Срочно покажите мне торты!": show_catalogue,
         "Основное меню": show_menu,
         "Каталог тортов": show_catalogue,
-        "Вернуться в каталог тортов": show_catalogue,
+        "Посмотреть каталог тортов": show_catalogue,
         "Удивите меня": surprise_client,
         "Повторить заказ": repeat_order,
         "Текуший заказ": show_current_order,
@@ -364,8 +372,13 @@ def main():
         "Вернуться к выбору декора": choose_decor,
         "Без надписи": specify_order,
         "Хочу надпись!\n(+500)": specify_order,
-        "Вернуться к выбору надписи": specify_label,
-        "Оформить заказ": verify_order,
+        "Изменить детали торта": specify_label,
+        "Адрес доставки": specify_order,
+        "Дата доставки": specify_order,
+        "Время доставки": specify_order,
+        "Оставить комментарий": specify_order,
+        "Оформить заказ": specify_order,
+        "Оплатить заказ": verify_order,
         "Подтвердить и оплатить": get_permission,
     })
     updater = telegram.ext.Updater(token=token)
