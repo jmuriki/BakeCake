@@ -274,6 +274,7 @@ def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext
 def verify_order(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Спецификация заказа:"
     keyboard = [
+        [telegram.KeyboardButton("Вернуться к спецификации заказа")],
         [telegram.KeyboardButton("Оплатить")],
     ]
     show_the_keyboard(update, context, keyboard, message)
@@ -347,7 +348,9 @@ def main():
         "Достаточно декора": specify_the_label,
         "Без надписи": specify_order,
         "Подтверждаю, что надпись верна": specify_order,
+        "Вернуться к спецификации заказа": specify_order,
         "Оформить заказ": verify_order,
+        "Оплатить": verify_order,
     })
     updater = telegram.ext.Updater(token=token)
     dispatcher = updater.dispatcher
