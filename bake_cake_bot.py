@@ -86,8 +86,10 @@ def show_main_menu(update: telegram.Update, context: telegram.ext.CallbackContex
 def show_catalogue(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Каталог наших тортов:"
     keyboard = [
-        [telegram.KeyboardButton("Создать торт")],
-        [telegram.KeyboardButton("Удивите меня")],
+        [
+            telegram.KeyboardButton("Создать торт"),
+            telegram.KeyboardButton("Удивите меня"),
+        ],
         [telegram.KeyboardButton("Вернуться в основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
@@ -96,7 +98,10 @@ def show_catalogue(update: telegram.Update, context: telegram.ext.CallbackContex
 def create_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Итак, давайте приступим:"
     keyboard = [
-        [telegram.KeyboardButton("Выбрать форму")],
+        [
+            telegram.KeyboardButton("Выбрать форму"),
+            telegram.KeyboardButton("Удивите меня"),
+        ],
         [telegram.KeyboardButton("Вернуться в основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
@@ -105,6 +110,10 @@ def create_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
 def surprise_client(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Опа!"
     keyboard = [
+        [
+            telegram.KeyboardButton("Оформить заказ"),
+            telegram.KeyboardButton("Собрать ещё один торт"),
+        ],
         [telegram.KeyboardButton("Вернуться в основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
@@ -121,6 +130,10 @@ def repeat_order(update: telegram.Update, context: telegram.ext.CallbackContext)
 def show_current_order(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Информация по текущему заказу:"
     keyboard = [
+        [
+            telegram.KeyboardButton("Связаться с нами"),
+            telegram.KeyboardButton("Оформить заказ"),
+        ],
         [telegram.KeyboardButton("Вернуться в основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
@@ -267,6 +280,7 @@ def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext
             telegram.KeyboardButton("Оформить заказ"),
             telegram.KeyboardButton("Собрать ещё один торт"),
         ],
+        [telegram.KeyboardButton("Вернуться в основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
 
