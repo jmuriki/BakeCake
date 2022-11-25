@@ -184,7 +184,11 @@ def choose_toppings(update: telegram.Update, context: telegram.ext.CallbackConte
         ],
         [
             telegram.KeyboardButton("Без топпингов"),
-            telegram.KeyboardButton("Достаточно топингов"),
+            telegram.KeyboardButton("Достаточно топпингов"),
+        ],
+        [
+            telegram.KeyboardButton("Оформить заказ"),
+            telegram.KeyboardButton("Собрать ещё один торт"),
         ],
     ]
     show_the_keyboard(update, context, keyboard, message)
@@ -195,14 +199,82 @@ def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContex
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору топпингов")],
         [
-            telegram.KeyboardButton("Малина         (+300р)"),
-            telegram.KeyboardButton("Ежевика        (+400р)"),
+            telegram.KeyboardButton("Малина (+300р)"),
+            telegram.KeyboardButton("Ежевика (+400р)"),
         ],
         [
-            telegram.KeyboardButton("Голубика       (+450р)"),
-            telegram.KeyboardButton("Клубника       (+500р)"),
+            telegram.KeyboardButton("Голубика (+450р)"),
+            telegram.KeyboardButton("Клубника (+500р)"),
         ],
-        [telegram.KeyboardButton("Продолжить без ягод")],
+        [
+            telegram.KeyboardButton("Без ягод"),
+            telegram.KeyboardButton("Достаточно ягод"),
+        ],
+        [
+            telegram.KeyboardButton("Оформить заказ"),
+            telegram.KeyboardButton("Собрать ещё один торт"),
+        ],
+    ]
+    show_the_keyboard(update, context, keyboard, message)
+
+
+def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext):
+    message = "Добавьте съедобных украшений:"
+    keyboard = [
+        [telegram.KeyboardButton("Вернуться к выбору ягод")],
+        [
+            telegram.KeyboardButton("Маршмеллоу (+200р)"),
+            telegram.KeyboardButton("Марципан (+280р)"),
+        ],
+        [
+            telegram.KeyboardButton("Фисташки (+300р)"),
+            telegram.KeyboardButton("Пекан (+300р)"),
+        ],
+        [
+            telegram.KeyboardButton("Фундук (+350р)"),
+            telegram.KeyboardButton("Безе (+400р)"),
+        ],
+        [
+            telegram.KeyboardButton("Без декора"),
+            telegram.KeyboardButton("Достаточно декора"),
+        ],
+        [
+            telegram.KeyboardButton("Оформить заказ"),
+            telegram.KeyboardButton("Собрать ещё один торт"),
+        ],
+    ]
+    show_the_keyboard(update, context, keyboard, message)
+
+
+def specify_the_label(update: telegram.Update, context: telegram.ext.CallbackContext):
+    message = "Если у Вас есть желание сделать надпись, пришлите нам текст ответным сообщением."
+    keyboard = [
+        [telegram.KeyboardButton("Вернуться к выбору декора")],
+        [telegram.KeyboardButton("Без надписи")],
+        [
+            telegram.KeyboardButton("Оформить заказ"),
+            telegram.KeyboardButton("Собрать ещё один торт"),
+        ],
+    ]
+    show_the_keyboard(update, context, keyboard, message)
+
+
+def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext):
+    message = "Подтвердите заказ или соберите ещё один торт:"
+    keyboard = [
+        [telegram.KeyboardButton("Вернуться к просмотру каталога")],
+        [
+            telegram.KeyboardButton("Оплатить заказ"),
+            telegram.KeyboardButton("Собрать ещё один торт"),
+        ],
+    ]
+    show_the_keyboard(update, context, keyboard, message)
+
+
+def verify_order(update: telegram.Update, context: telegram.ext.CallbackContext):
+    message = "Спецификация заказа:"
+    keyboard = [
+        [telegram.KeyboardButton("Оплатить")],
     ]
     show_the_keyboard(update, context, keyboard, message)
 
@@ -223,19 +295,6 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
             buttons.get(name)(update, context)
 
 
-def build_menu(buttons, n_cols,
-               header_buttons=None,
-               footer_buttons=None):
-    menu = [buttons[i:i+n_cols] for i in range(0, len(buttons), n_cols)]
-    if header_buttons:
-        menu.insert(0, [header_buttons])
-    if footer_buttons:
-        menu.append([footer_buttons])
-    return menu
-
-
-
-
 def main():
     load_dotenv()
     token = os.environ["TG_BOT_KEY"]
@@ -248,6 +307,7 @@ def main():
         "Посмотреть каталог": show_catalogue,
         "Вернуться к просмотру каталога": show_catalogue,
         "Создать торт": create_cake,
+        "Собрать ещё один торт": create_cake,
         "Удивите меня": surprise_client,
         "Повторить заказ": repeat_order,
         "Где мой заказ?": show_current_order,
@@ -257,6 +317,7 @@ def main():
         "Круг           (+400р)": choose_levels_number,
         "Квадрат        (+600р)": choose_levels_number,
         "Прямоугольник  (+1000р)": choose_levels_number,
+        "Вернуться к выбору количества уровней": choose_levels_number,
         "1 уровень      (+400р)": choose_toppings,
         "2 уровня       (+750р)": choose_toppings,
         "3 уровня       (+1100р)": choose_toppings,
@@ -267,7 +328,27 @@ def main():
         "Клубничный сироп       (+300р)": choose_toppings,
         "Черничный сироп        (+350р)": choose_toppings,
         "Вернуться к выбору топпингов": choose_toppings,
-        "Без топпинга": choose_berries,
+        "Без топпингов": choose_berries,
+        "Достаточно топпингов": choose_berries,
+        "Малина (+300р)": choose_berries,
+        "Ежевика (+400р)": choose_berries,
+        "Голубика (+450р)": choose_berries,
+        "Клубника (+500р)": choose_berries,
+        "Вернуться к выбору ягод": choose_berries,
+        "Без ягод": choose_decor,
+        "Достаточно ягод": choose_decor,
+        "Маршмеллоу (+200р)": choose_decor,
+        "Марципан (+280р)": choose_decor,
+        "Фисташки (+300р)": choose_decor,
+        "Пекан (+300р)": choose_decor,
+        "Фундук (+350р)": choose_decor,
+        "Безе (+400р)": choose_decor,
+        "Без декора": specify_the_label,
+        "Достаточно декора": specify_the_label,
+        "Без надписи": specify_order,
+        "Подтверждаю, что надпись верна": specify_order,
+        "Оформить заказ": specify_order,
+        "Оплатить заказ": verify_order,
     })
     updater = telegram.ext.Updater(token=token)
     dispatcher = updater.dispatcher
