@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-buttons = {}
+triggers = {}
 
 
 def help_command(update, _):
@@ -28,6 +28,11 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
         [telegram.KeyboardButton("Срочно покажите мне торты!")],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Согласие на обработку ПД": get_permission,
+        "Срочно покажите мне торты!": show_catalogue,
+        "Основное меню": show_menu,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -45,6 +50,10 @@ def get_permission(update: telegram.Update, context: telegram.ext.CallbackContex
             telegram.KeyboardButton("Разрешаю обработку моих ПД."),
         ]
     ]
+    triggers.update({
+        "Запрещаю обработку моих ПД.": if_forbidden,
+        "Разрешаю обработку моих ПД.": if_allowed,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -81,6 +90,14 @@ def show_menu(update: telegram.Update, context: telegram.ext.CallbackContext):
             telegram.KeyboardButton("Согласие на обработку ПД"),
         ],
     ]
+    triggers.update({
+        "Каталог тортов": show_catalogue,
+        "Создать торт": choose_size,
+        "Текуший заказ": show_current_order,
+        "Повторить заказ": repeat_order,
+        "Удивите меня": surprise_client,
+        "Связаться с нами": contact_support,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -98,6 +115,9 @@ def repeat_order(update: telegram.Update, context: telegram.ext.CallbackContext)
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Оформить заказ": specify_order,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -146,6 +166,9 @@ def surprise_client(update: telegram.Update, context: telegram.ext.CallbackConte
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Собрать ещё один торт": choose_size,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -159,6 +182,12 @@ def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext):
             telegram.KeyboardButton("3 уровня\n(+1100р)")
         ],
     ]
+    triggers.update({
+        "Посмотреть каталог тортов": show_catalogue,
+        "1 уровень\n(+400р)": choose_form,
+        "2 уровня\n(+750р)": choose_form,
+        "3 уровня\n(+1100р)": choose_form,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -172,6 +201,12 @@ def choose_form(update: telegram.Update, context: telegram.ext.CallbackContext):
             telegram.KeyboardButton("Прямоугольник\n(+1000р)"),
         ],
     ]
+    triggers.update({
+        "Вернуться к выбору количества уровней": choose_size,
+        "Круг\n(+400р)": choose_toppings,
+        "Квадрат\n(+600р)": choose_toppings,
+        "Прямоугольник\n(+1000р)": choose_toppings,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -196,6 +231,17 @@ def choose_toppings(update: telegram.Update, context: telegram.ext.CallbackConte
             telegram.KeyboardButton("Достаточно топпингов"),
         ],
     ]
+    triggers.update({
+        "Вернуться к выбору формы": choose_form,
+        "Карамельный сироп\n(+180р)": choose_toppings,
+        "Кленовый сироп\n(+200р)": choose_toppings,
+        "Белый соус\n(+200р)": choose_toppings,
+        "Молочный шоколад\n(+200р)": choose_toppings,
+        "Клубничный сироп\n(+300р)": choose_toppings,
+        "Черничный сироп\n(+350р)": choose_toppings,
+        "Без топпингов": choose_berries,
+        "Достаточно топпингов": choose_berries,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -221,6 +267,15 @@ def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContex
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Вернуться к выбору топпингов": choose_toppings,
+        "Малина\n(+300р)": choose_berries,
+        "Ежевика\n(+400р)": choose_berries,
+        "Голубика\n(+450р)": choose_berries,
+        "Клубника\n(+500р)": choose_berries,
+        "Без ягод": choose_decor,
+        "Ягод уже достаточно": choose_decor,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -250,6 +305,17 @@ def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext)
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Вернуться к выбору ягод": choose_berries,
+        "Маршмеллоу\n(+200р)": choose_decor,
+        "Марципан\n(+280р)": choose_decor,
+        "Фисташки\n(+300р)": choose_decor,
+        "Пекан\n(+300р)": choose_decor,
+        "Фундук\n(+350р)": choose_decor,
+        "Безе\n(+400р)": choose_decor,
+        "Без декора": specify_label,
+        "Уже достаточно декора": specify_label,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -271,6 +337,11 @@ def specify_label(update: telegram.Update, context: telegram.ext.CallbackContext
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Вернуться к выбору декора": choose_decor,
+        "Без надписи": specify_order,
+        "Хочу надпись!\n(+500)": specify_order,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -292,6 +363,14 @@ def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Изменить детали торта": specify_label,
+        "Адрес доставки": specify_order,
+        "Дата доставки": specify_order,
+        "Время доставки": specify_order,
+        "Оставить комментарий": specify_order,
+        "Оплатить заказ": verify_order,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -301,6 +380,9 @@ def verify_order(update: telegram.Update, context: telegram.ext.CallbackContext)
         [telegram.KeyboardButton("Подтвердить и оплатить")],
         [telegram.KeyboardButton("Основное меню")],
     ]
+    triggers.update({
+        "Подтвердить и оплатить": get_permission,
+    })
     show_the_keyboard(update, context, keyboard, message)
 
 
@@ -315,72 +397,14 @@ def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackCon
 
 def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackContext):
     user_answer = update.message.text
-    for name, _ in buttons.items():
+    for name, _ in triggers.items():
         if name.lower() in user_answer.lower():
-            buttons.get(name)(update, context)
+            triggers.get(name)(update, context)
 
 
 def main():
     load_dotenv()
     token = os.environ["TG_BOT_KEY"]
-    buttons.update({
-        "Согласие на обработку ПД": get_permission,
-        "Разрешаю обработку моих ПД.": if_allowed,
-        "Запрещаю обработку моих ПД.": if_forbidden,
-        "Срочно покажите мне торты!": show_catalogue,
-        "Основное меню": show_menu,
-        "Каталог тортов": show_catalogue,
-        "Посмотреть каталог тортов": show_catalogue,
-        "Удивите меня": surprise_client,
-        "Повторить заказ": repeat_order,
-        "Текуший заказ": show_current_order,
-        "Связаться с нами": contact_support,
-        "Создать торт": choose_size,
-        "Собрать ещё один торт": choose_size,
-        "1 уровень\n(+400р)": choose_form,
-        "2 уровня\n(+750р)": choose_form,
-        "3 уровня\n(+1100р)": choose_form,
-        "Вернуться к выбору количества уровней": choose_size,
-        "Круг\n(+400р)": choose_toppings,
-        "Квадрат\n(+600р)": choose_toppings,
-        "Прямоугольник\n(+1000р)": choose_toppings,
-        "Вернуться к выбору формы": choose_form,
-        "Белый соус\n(+200р)": choose_toppings,
-        "Молочный шоколад\n(+200р)": choose_toppings,
-        "Карамельный сироп\n(+180р)": choose_toppings,
-        "Кленовый сироп\n(+200р)": choose_toppings,
-        "Клубничный сироп\n(+300р)": choose_toppings,
-        "Черничный сироп\n(+350р)": choose_toppings,
-        "Без топпингов": choose_berries,
-        "Достаточно топпингов": choose_berries,
-        "Вернуться к выбору топпингов": choose_toppings,
-        "Малина\n(+300р)": choose_berries,
-        "Ежевика\n(+400р)": choose_berries,
-        "Голубика\n(+450р)": choose_berries,
-        "Клубника\n(+500р)": choose_berries,
-        "Без ягод": choose_decor,
-        "Ягод уже достаточно": choose_decor,
-        "Вернуться к выбору ягод": choose_berries,
-        "Маршмеллоу\n(+200р)": choose_decor,
-        "Марципан\n(+280р)": choose_decor,
-        "Фисташки\n(+300р)": choose_decor,
-        "Пекан\n(+300р)": choose_decor,
-        "Фундук\n(+350р)": choose_decor,
-        "Безе\n(+400р)": choose_decor,
-        "Без декора": specify_label,
-        "Уже достаточно декора": specify_label,
-        "Вернуться к выбору декора": choose_decor,
-        "Без надписи": specify_order,
-        "Хочу надпись!\n(+500)": specify_order,
-        "Изменить детали торта": specify_label,
-        "Адрес доставки": specify_order,
-        "Дата доставки": specify_order,
-        "Время доставки": specify_order,
-        "Оставить комментарий": specify_order,
-        "Оформить заказ": specify_order,
-        "Оплатить заказ": verify_order,
-        "Подтвердить и оплатить": get_permission,
-    })
     updater = telegram.ext.Updater(token=token)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(telegram.ext.CommandHandler('help', help_command))
