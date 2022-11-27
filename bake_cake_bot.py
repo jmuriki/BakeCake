@@ -1,6 +1,13 @@
 import logging
 
-# logging.basicConfig(level=logging.DEBUG, filename="bake_cake_bot_log.log", filemode="w")
+import os
+import telegram
+import telegram.ext
+
+from pathlib import Path
+from dotenv import load_dotenv
+
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.DEBUG,
                     filename="bake_cake_bot_log.log",
@@ -13,29 +20,19 @@ logging.error("LOGGING ERROR")
 logging.critical("LOGGING CRITICAL")
 
 
-import os
-import telegram
-import telegram.ext
-
-from pathlib import Path
-from dotenv import load_dotenv
-
-
 def help_command(update, _):
     update.message.reply_text("Используйте `/start` для начала или возврата к первому шагу.")
 
 
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
-    update.message.reply_text("Здравствуйте) Рады, что Вы нас посетили!")
-    update.message.reply_text("Cледуйте нашим подсказкам, выбирая за раз один из предложенных пунктов меню.")
-    # context.bot.send_message(
-    #     chat_id=update.effective_chat.id,
-    #     text="Здравствуйте) Рады, что Вы нас посетили!",
-    # )
-    # context.bot.send_message(
-    #     chat_id=update.effective_chat.id,
-    #     text="Cледуйте нашим подсказкам, выбирая за раз один из предложенных пунктов меню.",
-    # )
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Здравствуйте) Рады, что Вы нас посетили!",
+    )
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Cледуйте нашим подсказкам, выбирая за раз один из предложенных пунктов меню.",
+    )
     message = "(нажмите на значок в поле ввода текста, чтобы развернуть меню, если оно не отображается)"
     keyboard = [
         [telegram.KeyboardButton("Согласие на обработку ПД")],
@@ -48,11 +45,10 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
 def get_permission(update: telegram.Update, context: telegram.ext.CallbackContext):
     with open(Path("./Согласие на обработку ПД.pdf"), "rb") as file:
         context.bot.send_document(chat_id=update.effective_chat.id, document=file)
-    update.message.reply_text("Изучите, пожалуйста, бланк Согласия на обработку персональных данных (далее - ПД), представленный выше.")
-    # context.bot.send_message(
-    #     chat_id=update.effective_chat.id,
-    #     text="Изучите, пожалуйста, бланк Согласия на обработку персональных данных (далее - ПД), представленный выше.",
-    # )
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Изучите, пожалуйста, бланк Согласия на обработку персональных данных (далее - ПД), представленный выше.",
+    )
     message = "Вы согласны на обработку Ваших персональных данных?"
     keyboard = [
         [
@@ -64,20 +60,18 @@ def get_permission(update: telegram.Update, context: telegram.ext.CallbackContex
 
 
 def if_allowed(update: telegram.Update, context: telegram.ext.CallbackContext):
-    update.message.reply_text("Благодарим за доверие)")
-    # context.bot.send_message(
-    #     chat_id=update.effective_chat.id,
-    #     text="Благодарим за доверие)",
-    # )
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Благодарим за доверие)",
+    )
     show_menu(update, context)
 
 
 def if_forbidden(update: telegram.Update, context: telegram.ext.CallbackContext):
-    update.message.reply_text("На этапе оформления заказа нам будет не обойтись без Вашего согласия.")
-    # context.bot.send_message(
-    #     chat_id=update.effective_chat.id,
-    #     text="На этапе оформления заказа нам будет не обойтись без Вашего согласия.",
-    # )
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="На этапе оформления заказа нам будет не обойтись без Вашего согласия.",
+    )
     show_menu(update, context)
 
 
