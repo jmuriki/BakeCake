@@ -1,3 +1,13 @@
+import logging
+
+logging.basicConfig(level=logging.DEBUG, filename="bake_cake_bot_log.log", filemode="w")
+logging.debug("LOGGING DEBUG")
+logging.info("LOGGING INFO")
+logging.warning("LOGGING WARNING")
+logging.error("LOGGING ERROR")
+logging.critical("LOGGING CRITICAL")
+
+
 import os
 import telegram
 import telegram.ext
