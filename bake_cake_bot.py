@@ -1,4 +1,5 @@
 import logging
+import datetime
 
 import os
 import telegram
@@ -177,6 +178,27 @@ def surprise_client(update: telegram.Update, context: telegram.ext.CallbackConte
     show_the_keyboard(update, context, keyboard, message)
 
 
+def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db[update.effective_chat.id].get("cake"):
+        db[update.effective_chat.id]["cake"] = {
+            1: {
+                "datetime": datetime.datetime,
+            },
+            "actual": 1,
+            "total": 1,
+        }
+    else:
+        n_cake = db[update.effective_chat.id]["cake"]["total"] + 1
+        db[update.effective_chat.id]["cake"] = {
+            n_cake: {
+                "datetime": datetime.datetime,
+            },
+            "actual": n_cake,
+            "total": n_cake,
+        }
+    choose_size(update, context)
+
+
 def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Выберите количество уровней торта:"
     keyboard = [
@@ -350,13 +372,13 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         "Разрешаю обработку моих ПД.": if_allowed,
         "Запрещаю обработку моих ПД.": if_forbidden,
         "Каталог тортов": show_catalogue,
-        "Создать торт": choose_size,
+        "Создать торт": add_cake,
         "Текуший заказ": show_current_order,
         "Повторить заказ": repeat_order,
         "Удивите меня": surprise_client,
         "Связаться с нами": contact_support,
         "Оформить заказ": specify_order,
-        "Собрать ещё один торт": choose_size,
+        "Собрать ещё один торт": add_cake,
         "Посмотреть каталог тортов": show_catalogue,
         "1 уровень\n(+400р)": choose_form,
         "2 уровня\n(+750р)": choose_form,
@@ -401,9 +423,13 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         "Оплатить заказ": verify_order,
         "Подтвердить и оплатить": get_pd_permission,
     }
-    for name, _ in triggers.items():
-        if name.lower() in user_answer.lower():
-            triggers.get(name)(update, context)
+    for answer, _ in triggers.items():
+        if answer.lower() in user_answer.lower():
+            print(db)
+            if not db:
+                start(update, context)
+            else:
+                triggers[answer](update, context)
 
 
 def main():
