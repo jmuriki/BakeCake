@@ -138,7 +138,7 @@ def show_current_order(update: telegram.Update, context: telegram.ext.CallbackCo
         )
         add_cake(update, context)
     else:
-        message = "Информация по текущему заказу:"
+        message = f'Информация по текущему заказу: {db[update.effective_chat.id]["cakes"]}'
         keyboard = [
             [
                 telegram.KeyboardButton("Связаться с нами"),
@@ -174,15 +174,21 @@ def show_catalogue(update: telegram.Update, context: telegram.ext.CallbackContex
 
 
 def surprise_client(update: telegram.Update, context: telegram.ext.CallbackContext):
-    message = "Ооооп! Вот Ваш торт)"
-    keyboard = [
-        [
-            telegram.KeyboardButton("Оформить заказ"),
-            telegram.KeyboardButton("Собрать ещё один торт"),
-        ],
-        [telegram.KeyboardButton("Основное меню")],
-    ]
-    show_the_keyboard(update, context, keyboard, message)
+    if db[update.effective_chat.id].get("surprise"):
+        db[update.effective_chat.id]["surprise"] = False
+        message = f'Ооооп! Вот Ваш торт) {db[update.effective_chat.id]["cakes"][db[update.effective_chat.id]["cakes"]["total"]]}'
+        keyboard = [
+            [
+                telegram.KeyboardButton("Оформить заказ"),
+                telegram.KeyboardButton("Собрать ещё один торт"),
+            ],
+            [telegram.KeyboardButton("Основное меню")],
+        ]
+        show_the_keyboard(update, context, keyboard, message)
+    else:
+        db[update.effective_chat.id]["surprise"] = True
+        if db[update.effective_chat.id].get("surprise"):
+            add_cake(update, context)
 
 
 def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -190,20 +196,25 @@ def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
         db[update.effective_chat.id]["cakes"] = {
             1: {
                 "datetime": datetime.datetime,
+                "ОПИСАНИЕ ТОРТА": "ОПИСАНИЕ ТОРТА",
             },
             "actual": 1,
             "total": 1,
         }
-    else:
+    elif db[update.effective_chat.id].get("cakes"):
         n_cake = db[update.effective_chat.id]["cakes"]["total"] + 1
-        db[update.effective_chat.id]["cakes"] = {
+        db[update.effective_chat.id]["cakes"][n_cake] = {
             n_cake: {
                 "datetime": datetime.datetime,
+                "ОПИСАНИЕ ТОРТА": "ОПИСАНИЕ ТОРТА",
             },
             "actual": n_cake,
             "total": n_cake,
         }
-    choose_size(update, context)
+    if db[update.effective_chat.id].get("surprise"):
+        surprise_client(update, context)
+    else:
+        choose_size(update, context)
 
 
 def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext):
