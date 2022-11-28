@@ -34,6 +34,9 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
             "user": {},
             "orders": {},
             "cakes": {},
+            "surprise": False,
+            "actual_cake": 0,
+            "cakes_in_order": 0,
         }
     db[update.effective_chat.id]["user"]["first_name"] = update.effective_chat.first_name
     db[update.effective_chat.id]["user"]["last_name"] = update.effective_chat.last_name
@@ -216,7 +219,10 @@ def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
 def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Выберите количество уровней торта:"
     keyboard = [
-        [telegram.KeyboardButton("Каталог тортов")],
+        [
+            telegram.KeyboardButton("Каталог тортов"),
+            telegram.KeyboardButton("Удивите меня"),
+        ],
         [
             telegram.KeyboardButton("1 уровень\n(+400р)"),
             telegram.KeyboardButton("2 уровня\n(+750р)"),
