@@ -131,15 +131,22 @@ def repeat_order(update: telegram.Update, context: telegram.ext.CallbackContext)
 
 
 def show_current_order(update: telegram.Update, context: telegram.ext.CallbackContext):
-    message = "Информация по текущему заказу:"
-    keyboard = [
-        [
-            telegram.KeyboardButton("Связаться с нами"),
-            telegram.KeyboardButton("Оформить заказ"),
-        ],
-        [telegram.KeyboardButton("Основное меню")],
-    ]
-    show_the_keyboard(update, context, keyboard, message)
+    if not db[update.effective_chat.id].get("cakes"):
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Ваш текущий заказ пуст.",
+        )
+        add_cake(update, context)
+    else:
+        message = "Информация по текущему заказу:"
+        keyboard = [
+            [
+                telegram.KeyboardButton("Связаться с нами"),
+                telegram.KeyboardButton("Оформить заказ"),
+            ],
+            [telegram.KeyboardButton("Основное меню")],
+        ]
+        show_the_keyboard(update, context, keyboard, message)
 
 
 def contact_support(update: telegram.Update, context: telegram.ext.CallbackContext):
