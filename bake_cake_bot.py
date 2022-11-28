@@ -199,7 +199,8 @@ def surprise_client(update: telegram.Update, context: telegram.ext.CallbackConte
 def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
     if not db[update.effective_chat.id].get("cakes"):
         db[update.effective_chat.id]["cakes"][1] = {
-                "Заказ №": 1,
+                "Заказ №": db[update.effective_chat.id],
+                "Торт №": 1,
                 "Дата": datetime.datetime.date,
                 "Время": datetime.datetime.time,
                 "Количество уровней": {},
@@ -215,7 +216,8 @@ def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext, arg
     elif db[update.effective_chat.id].get("cakes"):
         n_cake = db[update.effective_chat.id]["n_cakes"] + 1
         db[update.effective_chat.id]["cakes"][n_cake] = {
-                "Заказ №": n_cake,
+                "Заказ №": db[update.effective_chat.id],
+                "Торт №": n_cake,
                 "Дата": datetime.datetime.date,
                 "Время": datetime.datetime.time,
                 "Количество уровней": {},
@@ -353,7 +355,7 @@ def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext
             chat_id=update.effective_chat.id,
             text="Почти всё! Осталось уточнить детали доставки или же... можно собрать ещё один торт)"
         )
-    message = "Нажмите кнопку, а затем отправьте сообщением соответствующую информацию."
+    message = "Чтобы уточнить детали, нажмите кнопку, а затем отправьте сообщением соответствующую информацию."
     keyboard = [
         [
             telegram.KeyboardButton("Изменить детали торта"),
@@ -392,7 +394,6 @@ def get_payment(update: telegram.Update, context: telegram.ext.CallbackContext, 
         )
 
 
-
 def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackContext, keyboard, message):
     reply_markup = telegram.ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
     context.bot.send_message(
@@ -404,7 +405,7 @@ def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackCon
 
 def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackContext):
     user_choice = update.message.text
-    print("user_choice", user_choice)
+    print("user_choise", user_choice)
     triggers = {
         "Согласие на обработку ПД": {
                 "next_func": get_pd_permission,
@@ -633,22 +634,22 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         },
         "Адрес доставки": {
                 "next_func": specify_order,
-                "arg": user_choice,
+                "arg": db[update.effective_chat.id]["previous_user_choice"],
                 "save_to": "Адрес доставки",
         },
         "Дата доставки": {
                 "next_func": specify_order,
-                "arg": user_choice,
+                "arg": db[update.effective_chat.id]["previous_user_choice"],
                 "save_to": "Дата доставки",
         },
         "Время доставки": {
                 "next_func": specify_order,
-                "arg": user_choice,
+                "arg": db[update.effective_chat.id]["previous_user_choice"],
                 "save_to": "Время доставки",
         },
         "Оставить комментарий": {
                 "next_func": specify_order,
-                "arg": user_choice,
+                "arg": db[update.effective_chat.id]["previous_user_choice"],
                 "save_to": "Комментарий",
         },
         "Оплатить заказ": {
@@ -662,20 +663,23 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
                 "save_to": None,
         },
     }
-    for trigger, aftereffect in triggers.items():
-        if trigger in user_choice:
-            print("trigger", trigger)
-            print(db)
-            db[update.effective_chat.id]["previous_user_choice"] = trigger
-            if not db:
-                start(update, context)
-            else:
-                print("trigger", trigger)
-                arg = trigger.split("+")[1].split("р")[0] if "+" in trigger else 0
-                print("arg", arg)
-                save_to = aftereffect["save_to"]
-                print("save_to", save_to)
-                aftereffect["next_func"](update, context, arg, save_to)
+    if triggers.get(user_choice):
+        print("000")
+        if not db:
+            print("111")
+            start(update, context)
+        else:
+            print("222")
+            db[update.effective_chat.id]["previous_user_choice"] = user_choice
+            arg = triggers[user_choice]["arg"]
+            save_to = triggers[user_choice]["save_to"]
+            triggers[user_choice]["next_func"](update, context, arg, save_to)
+    else:
+        print("333")
+        if db:
+            print("444")
+            db[update.effective_chat.id]["cakes"][triggers["user_choice"]['save_to']] = user_choice
+            print(db[update.effective_chat.id]["cakes"][triggers["user_choice"]['save_to']])
 
 
 def main():
