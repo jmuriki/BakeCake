@@ -36,7 +36,7 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
             "cakes": {},
             "surprise": False,
             "actual_cake": 0,
-            "cakes_in_order": 0,
+            "n_cakes_in_order": 0,
         }
     db[update.effective_chat.id]["user"]["first_name"] = update.effective_chat.first_name
     db[update.effective_chat.id]["user"]["last_name"] = update.effective_chat.last_name
@@ -53,7 +53,7 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "(нажмите на значок в поле ввода текста, чтобы развернуть меню, если оно не отображается)"
     keyboard = [
         [telegram.KeyboardButton("Согласие на обработку ПД")],
-        [telegram.KeyboardButton("Срочно покажите мне торты!")],
+        [telegram.KeyboardButton("Каталог тортов")],
         [telegram.KeyboardButton("Основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
@@ -179,7 +179,7 @@ def show_catalogue(update: telegram.Update, context: telegram.ext.CallbackContex
 def surprise_client(update: telegram.Update, context: telegram.ext.CallbackContext):
     if db[update.effective_chat.id].get("surprise"):
         db[update.effective_chat.id]["surprise"] = False
-        message = f'Ооооп! Вот Ваш торт) {db[update.effective_chat.id]["cakes"][db[update.effective_chat.id]["cakes_in_order"]]}'
+        message = f'Ооооп! Вот Ваш торт) {db[update.effective_chat.id]["cakes"][db[update.effective_chat.id]["n_cakes_in_order"]]}'
         keyboard = [
             [
                 telegram.KeyboardButton("Оформить заказ"),
@@ -201,15 +201,15 @@ def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
                 "ОПИСАНИЕ ТОРТА": "ОПИСАНИЕ ТОРТА",
         }
         db[update.effective_chat.id]["actual_cake"] = 1
-        db[update.effective_chat.id]["cakes_in_order"] = 1
+        db[update.effective_chat.id]["n_cakes_in_order"] = 1
     elif db[update.effective_chat.id].get("cakes"):
-        n_cake = db[update.effective_chat.id]["cakes_in_order"] + 1
+        n_cake = db[update.effective_chat.id]["n_cakes_in_order"] + 1
         db[update.effective_chat.id]["cakes"][n_cake] = {
                 "datetime": datetime.datetime,
                 "ОПИСАНИЕ ТОРТА": "ОПИСАНИЕ ТОРТА",
         }
         db[update.effective_chat.id]["actual_cake"] = n_cake
-        db[update.effective_chat.id]["cakes_in_order"] = n_cake
+        db[update.effective_chat.id]["n_cakes_in_order"] = n_cake
     if db[update.effective_chat.id].get("surprise"):
         surprise_client(update, context)
     else:
@@ -245,7 +245,7 @@ def choose_form(update: telegram.Update, context: telegram.ext.CallbackContext):
     show_the_keyboard(update, context, keyboard, message)
 
 
-def choose_toppings(update: telegram.Update, context: telegram.ext.CallbackContext):
+def choose_topping(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Добавьте топпинги по вкусу:"
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору формы")],
@@ -261,10 +261,7 @@ def choose_toppings(update: telegram.Update, context: telegram.ext.CallbackConte
             telegram.KeyboardButton("Клубничный сироп\n(+300р)"),
             telegram.KeyboardButton("Черничный сироп\n(+350р)"),
         ],
-        [
-            telegram.KeyboardButton("Без топпингов"),
-            telegram.KeyboardButton("Достаточно топпингов"),
-        ],
+        [telegram.KeyboardButton("Без топпингов")],
     ]
     show_the_keyboard(update, context, keyboard, message)
 
@@ -272,7 +269,7 @@ def choose_toppings(update: telegram.Update, context: telegram.ext.CallbackConte
 def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Добавьте свежих ягод:"
     keyboard = [
-        [telegram.KeyboardButton("Вернуться к выбору топпингов")],
+        [telegram.KeyboardButton("Вернуться к выбору топпинга")],
         [
             telegram.KeyboardButton("Малина\n(+300р)"),
             telegram.KeyboardButton("Ежевика\n(+400р)"),
@@ -281,10 +278,7 @@ def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContex
             telegram.KeyboardButton("Голубика\n(+450р)"),
             telegram.KeyboardButton("Клубника\n(+500р)"),
         ],
-        [
-            telegram.KeyboardButton("Без ягод"),
-            telegram.KeyboardButton("Ягод уже достаточно"),
-        ],
+        [telegram.KeyboardButton("Без ягод")],
         [
             telegram.KeyboardButton("Оформить заказ"),
             telegram.KeyboardButton("Собрать ещё один торт"),
@@ -310,10 +304,7 @@ def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext)
             telegram.KeyboardButton("Фундук\n(+350р)"),
             telegram.KeyboardButton("Безе\n(+400р)"),
         ],
-        [
-            telegram.KeyboardButton("Без декора"),
-            telegram.KeyboardButton("Уже достаточно декора"),
-        ],
+        [telegram.KeyboardButton("Без декора")],
         [
             telegram.KeyboardButton("Оформить заказ"),
             telegram.KeyboardButton("Собрать ещё один торт"),
@@ -398,11 +389,10 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
     user_answer = update.message.text
     triggers = {
         "Согласие на обработку ПД": get_pd_permission,
-        "Срочно покажите мне торты!": show_catalogue,
+        "Каталог тортов": show_catalogue,
         "Основное меню": show_menu,
         "Разрешаю обработку моих ПД.": if_allowed,
         "Запрещаю обработку моих ПД.": if_forbidden,
-        "Каталог тортов": show_catalogue,
         "Создать торт": add_cake,
         "Текуший заказ": show_current_order,
         "Повторить заказ": repeat_order,
@@ -414,34 +404,31 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         "2 уровня\n(+750р)": choose_form,
         "3 уровня\n(+1100р)": choose_form,
         "Вернуться к выбору количества уровней": choose_size,
-        "Круг\n(+400р)": choose_toppings,
-        "Квадрат\n(+600р)": choose_toppings,
-        "Прямоугольник\n(+1000р)": choose_toppings,
+        "Круг\n(+400р)": choose_topping,
+        "Квадрат\n(+600р)": choose_topping,
+        "Прямоугольник\n(+1000р)": choose_topping,
         "Вернуться к выбору формы": choose_form,
-        "Карамельный сироп\n(+180р)": choose_toppings,
-        "Кленовый сироп\n(+200р)": choose_toppings,
-        "Белый соус\n(+200р)": choose_toppings,
-        "Молочный шоколад\n(+200р)": choose_toppings,
-        "Клубничный сироп\n(+300р)": choose_toppings,
-        "Черничный сироп\n(+350р)": choose_toppings,
+        "Карамельный сироп\n(+180р)": choose_berries,
+        "Кленовый сироп\n(+200р)": choose_berries,
+        "Белый соус\n(+200р)": choose_berries,
+        "Молочный шоколад\n(+200р)": choose_berries,
+        "Клубничный сироп\n(+300р)": choose_berries,
+        "Черничный сироп\n(+350р)": choose_berries,
         "Без топпингов": choose_berries,
-        "Достаточно топпингов": choose_berries,
-        "Вернуться к выбору топпингов": choose_toppings,
+        "Вернуться к выбору топпинга": choose_topping,
         "Малина\n(+300р)": choose_berries,
         "Ежевика\n(+400р)": choose_berries,
         "Голубика\n(+450р)": choose_berries,
         "Клубника\n(+500р)": choose_berries,
         "Без ягод": choose_decor,
-        "Ягод уже достаточно": choose_decor,
         "Вернуться к выбору ягод": choose_berries,
-        "Маршмеллоу\n(+200р)": choose_decor,
-        "Марципан\n(+280р)": choose_decor,
-        "Фисташки\n(+300р)": choose_decor,
-        "Пекан\n(+300р)": choose_decor,
-        "Фундук\n(+350р)": choose_decor,
-        "Безе\n(+400р)": choose_decor,
+        "Маршмеллоу\n(+200р)": specify_label,
+        "Марципан\n(+280р)": specify_label,
+        "Фисташки\n(+300р)": specify_label,
+        "Пекан\n(+300р)": specify_label,
+        "Фундук\n(+350р)": specify_label,
+        "Безе\n(+400р)": specify_label,
         "Без декора": specify_label,
-        "Уже достаточно декора": specify_label,
         "Вернуться к выбору декора": choose_decor,
         "Без надписи": specify_order,
         "Хочу надпись!\n(+500)": specify_order,
@@ -455,7 +442,6 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
     }
     for answer, _ in triggers.items():
         if answer.lower() in user_answer.lower():
-            print(db)
             if not db:
                 start(update, context)
             else:
