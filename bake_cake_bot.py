@@ -55,7 +55,9 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     show_the_keyboard(update, context, keyboard, message)
 
 
-def get_permission(update: telegram.Update, context: telegram.ext.CallbackContext):
+def get_pd_permission(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db[update.effective_chat.id]["user"].get("permission"):
+        db[update.effective_chat.id]["user"]["permission"] = False
     with open(Path("./Согласие на обработку ПД.pdf"), "rb") as file:
         context.bot.send_document(chat_id=update.effective_chat.id, document=file)
     context.bot.send_message(
@@ -73,6 +75,7 @@ def get_permission(update: telegram.Update, context: telegram.ext.CallbackContex
 
 
 def if_allowed(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db[update.effective_chat.id]["user"]["permission"] = True
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Благодарим за доверие)",
@@ -81,6 +84,7 @@ def if_allowed(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 
 def if_forbidden(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db[update.effective_chat.id]["user"]["permission"] = False
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="На этапе оформления заказа нам будет не обойтись без Вашего согласия.",
@@ -338,10 +342,9 @@ def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackCon
 
 
 def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackContext):
-    print(db)
     user_answer = update.message.text
     triggers = {
-        "Согласие на обработку ПД": get_permission,
+        "Согласие на обработку ПД": get_pd_permission,
         "Срочно покажите мне торты!": show_catalogue,
         "Основное меню": show_menu,
         "Разрешаю обработку моих ПД.": if_allowed,
@@ -396,7 +399,7 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         "Время доставки": specify_order,
         "Оставить комментарий": specify_order,
         "Оплатить заказ": verify_order,
-        "Подтвердить и оплатить": get_permission,
+        "Подтвердить и оплатить": get_pd_permission,
     }
     for name, _ in triggers.items():
         if name.lower() in user_answer.lower():
