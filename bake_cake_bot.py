@@ -118,7 +118,7 @@ def repeat_order(update: telegram.Update, context: telegram.ext.CallbackContext)
         chat_id=update.effective_chat.id,
         text="Вы можете отправить нам сообщением номер прошлого заказа и сразу перейти к его оформлению.",
     )
-    message = "Список Ваших прошлых заказов:"
+    message = f'Список Ваших прошлых заказов: {db[update.effective_chat.id]["orders"]}'
     keyboard = [
         [telegram.KeyboardButton("Каталог тортов")],
         [
