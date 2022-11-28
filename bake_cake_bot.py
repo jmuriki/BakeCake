@@ -134,7 +134,7 @@ def show_current_order(update: telegram.Update, context: telegram.ext.CallbackCo
     if not db[update.effective_chat.id].get("cakes"):
         context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Ваш текущий заказ пуст.",
+            text="Ваш текущий заказ пуст, но это легко исправить!",
         )
         add_cake(update, context)
     else:
@@ -404,7 +404,6 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         "Связаться с нами": contact_support,
         "Оформить заказ": specify_order,
         "Собрать ещё один торт": add_cake,
-        "Посмотреть каталог тортов": show_catalogue,
         "1 уровень\n(+400р)": choose_form,
         "2 уровня\n(+750р)": choose_form,
         "3 уровня\n(+1100р)": choose_form,
