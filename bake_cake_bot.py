@@ -32,8 +32,8 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     if not db.get(update.effective_chat.id):
         db[update.effective_chat.id] = {
             "user": {},
-            "order": {},
-            "cake": {},
+            "orders": {},
+            "cakes": {},
         }
     db[update.effective_chat.id]["user"]["first_name"] = update.effective_chat.first_name
     db[update.effective_chat.id]["user"]["last_name"] = update.effective_chat.last_name
@@ -179,8 +179,8 @@ def surprise_client(update: telegram.Update, context: telegram.ext.CallbackConte
 
 
 def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
-    if not db[update.effective_chat.id].get("cake"):
-        db[update.effective_chat.id]["cake"] = {
+    if not db[update.effective_chat.id].get("cakes"):
+        db[update.effective_chat.id]["cakes"] = {
             1: {
                 "datetime": datetime.datetime,
             },
@@ -188,8 +188,8 @@ def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
             "total": 1,
         }
     else:
-        n_cake = db[update.effective_chat.id]["cake"]["total"] + 1
-        db[update.effective_chat.id]["cake"] = {
+        n_cake = db[update.effective_chat.id]["cakes"]["total"] + 1
+        db[update.effective_chat.id]["cakes"] = {
             n_cake: {
                 "datetime": datetime.datetime,
             },
@@ -346,12 +346,23 @@ def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext
 
 
 def verify_order(update: telegram.Update, context: telegram.ext.CallbackContext):
-    message = "Спецификация заказа:"
+    message = f'Спецификация заказа: {db[update.effective_chat.id]["cakes"]}'
     keyboard = [
         [telegram.KeyboardButton("Подтвердить и оплатить")],
         [telegram.KeyboardButton("Основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
+
+
+def get_payment(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db[update.effective_chat.id]["user"].get("permission"):
+        get_pd_permission(update, context)
+    else:
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Здесь должны быть данные для оплаты заказа."
+        )
+
 
 
 def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackContext, keyboard, message):
@@ -421,7 +432,7 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         "Время доставки": specify_order,
         "Оставить комментарий": specify_order,
         "Оплатить заказ": verify_order,
-        "Подтвердить и оплатить": get_pd_permission,
+        "Подтвердить и оплатить": get_payment,
     }
     for answer, _ in triggers.items():
         if answer.lower() in user_answer.lower():
