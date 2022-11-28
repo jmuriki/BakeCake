@@ -20,11 +20,24 @@ logging.error("LOGGING ERROR")
 logging.critical("LOGGING CRITICAL")
 
 
+db = {}
+
+
 def help_command(update, _):
     update.message.reply_text("Используйте `/start` для начала или возврата к первому шагу.")
 
 
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db.get(update.effective_chat.id):
+        db[update.effective_chat.id] = {
+            "user": {},
+            "order": {},
+            "cake": {},
+        }
+    db[update.effective_chat.id]["user"]["first_name"] = update.effective_chat.first_name
+    db[update.effective_chat.id]["user"]["last_name"] = update.effective_chat.last_name
+    db[update.effective_chat.id]["user"]["username"] = update.effective_chat.username
+    db[update.effective_chat.id]["user"]["id"] = update.effective_chat.id
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Здравствуйте) Рады, что Вы нас посетили!",
@@ -325,6 +338,7 @@ def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackCon
 
 
 def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackContext):
+    print(db)
     user_answer = update.message.text
     triggers = {
         "Согласие на обработку ПД": get_permission,
