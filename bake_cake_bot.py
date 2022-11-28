@@ -216,7 +216,7 @@ def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
 def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Выберите количество уровней торта:"
     keyboard = [
-        [telegram.KeyboardButton("Посмотреть каталог тортов")],
+        [telegram.KeyboardButton("Каталог тортов")],
         [
             telegram.KeyboardButton("1 уровень\n(+400р)"),
             telegram.KeyboardButton("2 уровня\n(+750р)"),
