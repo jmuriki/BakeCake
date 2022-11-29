@@ -136,7 +136,6 @@ def show_menu(update: telegram.Update, context: telegram.ext.CallbackContext):
             telegram.KeyboardButton("Посмотреть текуший заказ"),
         ],
         [
-            telegram.KeyboardButton("Согласие на обработку ПД"),
             telegram.KeyboardButton("Связаться с нами"),
             telegram.KeyboardButton("Где мой заказ?"),
         ],
@@ -168,10 +167,8 @@ def show_current_order(update: telegram.Update, context: telegram.ext.CallbackCo
         )
         customise_cake(update, context)
     else:
-        cake = db["current_order"][db["temp"]["actual_cake_id"]]
+        cake = sum(price for category, price in db["current_order"][db["temp"]["actual_cake_id"]]["Комплектация"].items())
         pprint(cake)
-        cake["Итоговая стоимость"] = cake["Комплектация"].items()
-        pprint(cake["Итоговая стоимость"])
         message = f'Информация по текущему заказу: {db["current_order"]}'
         keyboard = [
             [
@@ -193,7 +190,7 @@ def find_my_order(update: telegram.Update, context: telegram.ext.CallbackContext
     else:
         context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="У Вас нет недоставленых заказов.",
+            text="У Вас нет текуших заказов.",
         )
         message = f'Информация по прошлым заказам: {db["orders"]}'
     keyboard = [
@@ -209,14 +206,22 @@ def find_my_order(update: telegram.Update, context: telegram.ext.CallbackContext
 def contact_support(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Контакты службы поддержки:"
     keyboard = [
-        [telegram.KeyboardButton("Написать жалобу")],
         [
-            telegram.KeyboardButton("Посмотреть прошлые заказы"),
-            telegram.KeyboardButton("Посмотреть текуший заказ"),
+            telegram.KeyboardButton("Согласие на обработку ПД"),
+            telegram.KeyboardButton("Написать жалобу"),
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
+
+
+def complain(update: telegram.Update, context: telegram.ext.CallbackContext):
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Опишите, пожалуйста, свою ситуацию в ответном сообщении, а мы постараемся исправить её максимально быстро."
+    )
+    db["temp"]["complain_flag"] = True
+    contact_support(update, context)
 
 
 def add_new_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -468,17 +473,11 @@ def archive_the_order(update: telegram.Update, context: telegram.ext.CallbackCon
     return show_menu(update, context)
 
 
-def complain(update: telegram.Update, context: telegram.ext.CallbackContext):
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="Опишите, пожалуйста, свою ситуацию в ответном сообщении, а мы постараемся исправить её максимально быстро."
-    )
-    db["temp"]["complain_flag"] = True
-    contact_support(update, context)
-
-
 def save_choise(update: telegram.Update, context: telegram.ext.CallbackContext, price, save_to):
-    db["current_order"][db["temp"]["actual_cake_id"]]["Комплектация"][save_to] = price
+    cake = db["current_order"][db["temp"]["actual_cake_id"]]
+    cake["Комплектация"][save_to] = price
+    if cake["Итоговая стоимость"] == 0:
+        cake["Итоговая стоимость"] = sum(price for category, price in cake["Комплектация"].items())
     pprint(db)
 
 
