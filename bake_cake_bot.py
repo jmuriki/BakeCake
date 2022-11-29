@@ -46,6 +46,7 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
                 "surprise_flag": False,
                 "specify_order_flag": False,
                 "ready_to_pay": False,
+                "complain_flag": False,
             },
         }
     global db
@@ -187,20 +188,30 @@ def find_my_order(update: telegram.Update, context: telegram.ext.CallbackContext
             chat_id=update.effective_chat.id,
             text=f'Ваш заказ передадут в службу доставки сразу же, как только он будет готов. {db["orders"]}',
         )
-        return contact_support(update, context)
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="У Вас нет недоставленых заказов.",
-    )
-    return show_menu(update, context)
+        message = f'Информация по текущему заказу: {db["current_order"]}'
+    else:
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="У Вас нет недоставленых заказов.",
+        )
+        message = f'Информация по прошлым заказам: {db["orders"]}'
+    keyboard = [
+        [
+            telegram.KeyboardButton("Написать жалобу"),
+            telegram.KeyboardButton("Связаться с нами"),
+        ],
+        [telegram.KeyboardButton("Основное меню")],
+    ]
+    show_the_keyboard(update, context, keyboard, message)
 
 
 def contact_support(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Контакты службы поддержки:"
     keyboard = [
+        [telegram.KeyboardButton("Написать жалобу")],
         [
+            telegram.KeyboardButton("Посмотреть прошлые заказы"),
             telegram.KeyboardButton("Посмотреть текуший заказ"),
-            telegram.KeyboardButton("Оформить заказ"),
         ],
         [telegram.KeyboardButton("Основное меню")],
     ]
@@ -455,6 +466,15 @@ def archive_the_order(update: telegram.Update, context: telegram.ext.CallbackCon
     return show_menu(update, context)
 
 
+def complain(update: telegram.Update, context: telegram.ext.CallbackContext):
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Опишите, пожалуйста, свою ситуацию в ответном сообщении, а мы постараемся исправить её максимально быстро."
+    )
+    db["temp"]["complain_flag"] = True
+    contact_support(update, context)
+
+
 def save_choise(update: telegram.Update, context: telegram.ext.CallbackContext, price, save_to):
     db["current_order"][db["temp"]["actual_cake_id"]]["Комплектация"][save_to] = price
     pprint(db)
@@ -504,6 +524,9 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
             "next_func": show_current_order,
         },
         "Повторить прошлый заказ": {
+            "next_func": repeat_order,
+        },
+        "Посмотреть прошлые заказы": {
             "next_func": repeat_order,
         },
         "Удивите меня": {
@@ -701,7 +724,10 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
         },
         "Где мой заказ?": {
             "next_func": find_my_order,
-        }
+        },
+        "Написать жалобу": {
+            "next_func": complain,
+        },
     }
     if triggers.get(last_input):
         price = triggers[last_input].get("price")
@@ -714,7 +740,11 @@ def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackCont
             db["temp"]["last_choice"] = ""
         triggers[last_input]["next_func"](update, context)
     else:
-        if db["temp"].get("label_flag"):
+        if db["temp"].get("complain_flag"):
+            db["temp"]["last_mssg"] = last_input
+            save_to = "Жалоба"
+            save_mssg(update, context, save_to)
+        elif db["temp"].get("label_flag"):
             db["temp"]["last_mssg"] = last_input
             save_to = "Текст надписи"
             save_mssg(update, context, save_to)
