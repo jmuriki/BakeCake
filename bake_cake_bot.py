@@ -235,8 +235,7 @@ def customise_cake(update: telegram.Update, context: telegram.ext.CallbackContex
         db["temp"]["new_cake_flag"] = False
         db["current_order"][1] = {
                 "Заказчик №": update.effective_chat.id,
-                "Дата": datetime.datetime.date,
-                "Время": datetime.datetime.time,
+                "Дата / Время": datetime.datetime.now(),
                 "Комплектация": {
                 },
                 "Итоговая стоимость": 0,
@@ -248,8 +247,7 @@ def customise_cake(update: telegram.Update, context: telegram.ext.CallbackContex
         n_cake = db["temp"]["n_cakes"] + 1
         db["current_order"][n_cake] = {
                 "Заказчик №": update.effective_chat.id,
-                "Дата": datetime.datetime.date,
-                "Время": datetime.datetime.time,
+                "Дата / Время": datetime.datetime.now(),
                 "Комплектация": {
                 },
                 "Итоговая стоимость": 0,
