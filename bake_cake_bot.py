@@ -42,11 +42,12 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
                 "last_mssg": "",
                 "n_cakes": 0,
                 "actual_cake_id": 0,
+                "pay_flag": False,
+                "label_flag": False,
                 "new_cake_flag": True,
                 "surprise_flag": False,
-                "specify_order_flag": False,
-                "ready_to_pay": False,
                 "complain_flag": False,
+                "specify_order_flag": False,
             },
         }
     global db
@@ -96,7 +97,7 @@ def if_allowed(update: telegram.Update, context: telegram.ext.CallbackContext):
         chat_id=update.effective_chat.id,
         text="Благодарим за доверие)",
     )
-    if db["temp"]["ready_to_pay"]:
+    if db["temp"]["pay_flag"]:
         return get_payment(update, context)
     show_menu(update, context)
 
@@ -430,7 +431,7 @@ def verify_order(update: telegram.Update, context: telegram.ext.CallbackContext)
 
 
 def get_payment(update: telegram.Update, context: telegram.ext.CallbackContext):
-    db["temp"]["ready_to_pay"] = True
+    db["temp"]["pay_flag"] = True
     if not db["user"].get("permission"):
         get_pd_permission(update, context)
     else:
@@ -452,11 +453,12 @@ def archive_the_order(update: telegram.Update, context: telegram.ext.CallbackCon
         "last_mssg": "",
         "n_cakes": 0,
         "actual_cake_id": 0,
+        "pay_flag": False,
+        "label_flag": False,
         "new_cake_flag": True,
         "surprise_flag": False,
+        "complain_flag": False,
         "specify_order_flag": False,
-        "ready_to_pay": False,
-        "waiting_for_delivery": True,
     }
     context.bot.send_message(
         chat_id=update.effective_chat.id,
