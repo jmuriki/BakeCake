@@ -8,6 +8,8 @@ import telegram.ext
 from pathlib import Path
 from dotenv import load_dotenv
 
+from pprint import pprint
+
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.DEBUG,
@@ -21,7 +23,8 @@ logging.error("LOGGING ERROR")
 logging.critical("LOGGING CRITICAL")
 
 
-db = {}
+DB = {}
+db = None
 
 
 def help_command(update, _):
@@ -29,23 +32,30 @@ def help_command(update, _):
 
 
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
-    if not db.get(update.effective_chat.id):
-        db[update.effective_chat.id] = {
+    if not DB.get(update.effective_chat.id):
+        DB[update.effective_chat.id] = {
             "user": {},
             "orders": {},
-            "cakes": {},
-            "n_cakes": 0,
-            "surprise": False,
-            "actual_cake_id": 0,
-            "previous_user_choice": "",
+            "current_order": {},
+            "temp": {
+                "last_choice": "",
+                "last_mssg": "",
+                "n_cakes": 0,
+                "actual_cake_id": 0,
+                "new_cake_flag": True,
+                "surprise_flag": False,
+                "specify_order_flag": False,
+                "ready_to_pay": False,
+            },
         }
-    db[update.effective_chat.id]["user"]["first_name"] = update.effective_chat.first_name
-    db[update.effective_chat.id]["user"]["last_name"] = update.effective_chat.last_name
-    db[update.effective_chat.id]["user"]["username"] = update.effective_chat.username
-    db[update.effective_chat.id]["user"]["id"] = update.effective_chat.id
+    global db
+    db = DB[update.effective_chat.id]
+    db["user"]["first_name"] = update.effective_chat.first_name
+    db["user"]["last_name"] = update.effective_chat.last_name
+    db["user"]["username"] = update.effective_chat.username
     context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Здравствуйте) Рады, что Вы нас посетили!",
+        text=f'Здравствуйте, {db["user"]["username"]}! Рады, что Вы нас посетили)',
     )
     context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -60,9 +70,9 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     show_the_keyboard(update, context, keyboard, message)
 
 
-def get_pd_permission(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    if not db[update.effective_chat.id]["user"].get("permission"):
-        db[update.effective_chat.id]["user"]["permission"] = False
+def get_pd_permission(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db["user"].get("permission"):
+        db["user"]["permission"] = False
     with open(Path("./Согласие на обработку ПД.pdf"), "rb") as file:
         context.bot.send_document(chat_id=update.effective_chat.id, document=file)
     context.bot.send_message(
@@ -79,25 +89,39 @@ def get_pd_permission(update: telegram.Update, context: telegram.ext.CallbackCon
     show_the_keyboard(update, context, keyboard, message)
 
 
-def if_allowed(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    db[update.effective_chat.id]["user"]["permission"] = True
+def if_allowed(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db["user"]["permission"] = True
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Благодарим за доверие)",
     )
-    show_menu(update, context, arg, save_to)
+    if db["temp"]["ready_to_pay"]:
+        return get_payment(update, context)
+    show_menu(update, context)
 
 
-def if_forbidden(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    db[update.effective_chat.id]["user"]["permission"] = False
+def if_forbidden(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db["user"]["permission"] = False
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="На этапе оформления заказа нам будет не обойтись без Вашего согласия.",
     )
-    show_menu(update, context, arg, save_to)
+    show_menu(update, context)
 
 
-def show_menu(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def show_catalogue(update: telegram.Update, context: telegram.ext.CallbackContext):
+    message = "Каталог наших тортов:"
+    keyboard = [
+        [
+            telegram.KeyboardButton("Собрать торт"),
+            telegram.KeyboardButton("Удивите меня"),
+        ],
+        [telegram.KeyboardButton("Основное меню")],
+    ]
+    show_the_keyboard(update, context, keyboard, message)
+
+
+def show_menu(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Вы находитесь в основном меню."
     keyboard = [
         [telegram.KeyboardButton("Каталог тортов")],
@@ -112,17 +136,18 @@ def show_menu(update: telegram.Update, context: telegram.ext.CallbackContext, ar
         [
             telegram.KeyboardButton("Согласие на обработку ПД"),
             telegram.KeyboardButton("Связаться с нами"),
+            telegram.KeyboardButton("Где мой заказ?"),
         ],
     ]
     show_the_keyboard(update, context, keyboard, message)
 
 
-def repeat_order(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def repeat_order(update: telegram.Update, context: telegram.ext.CallbackContext):
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Вы можете отправить нам сообщением номер прошлого заказа и сразу перейти к его оформлению.",
     )
-    message = f'Список Ваших прошлых заказов: {db[update.effective_chat.id]["orders"]}'
+    message = f'Список Ваших прошлых заказов: {db["orders"]}'
     keyboard = [
         [
             telegram.KeyboardButton("Связаться с нами"),
@@ -133,15 +158,19 @@ def repeat_order(update: telegram.Update, context: telegram.ext.CallbackContext,
     show_the_keyboard(update, context, keyboard, message)
 
 
-def show_current_order(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    if not db[update.effective_chat.id].get("cakes"):
+def show_current_order(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db.get("current_order"):
         context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Ваш текущий заказ пуст, но это легко исправить!",
         )
-        add_cake(update, context)
+        customise_cake(update, context)
     else:
-        message = f'Информация по текущему заказу: {db[update.effective_chat.id]["cakes"]}'
+        cake = db["current_order"][db["temp"]["actual_cake_id"]]
+        pprint(cake)
+        cake["Итоговая стоимость"] = cake["Комплектация"].items()
+        pprint(cake["Итоговая стоимость"])
+        message = f'Информация по текущему заказу: {db["current_order"]}'
         keyboard = [
             [
                 telegram.KeyboardButton("Связаться с нами"),
@@ -152,7 +181,21 @@ def show_current_order(update: telegram.Update, context: telegram.ext.CallbackCo
         show_the_keyboard(update, context, keyboard, message)
 
 
-def contact_support(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def find_my_order(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if db["temp"].get("waiting_for_delivery"):
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f'Ваш заказ передадут в службу доставки сразу же, как только он будет готов. {db["orders"]}',
+        )
+        return contact_support(update, context)
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="У Вас нет недоставленых заказов.",
+    )
+    return show_menu(update, context)
+
+
+def contact_support(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Контакты службы поддержки:"
     keyboard = [
         [
@@ -164,23 +207,15 @@ def contact_support(update: telegram.Update, context: telegram.ext.CallbackConte
     show_the_keyboard(update, context, keyboard, message)
 
 
-def show_catalogue(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    print("show_catalogue")
-    message = "Каталог наших тортов:"
-    keyboard = [
-        [
-            telegram.KeyboardButton("Собрать торт"),
-            telegram.KeyboardButton("Удивите меня"),
-        ],
-        [telegram.KeyboardButton("Основное меню")],
-    ]
-    show_the_keyboard(update, context, keyboard, message)
+def add_new_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db["temp"]["new_cake_flag"] = True
+    customise_cake(update, context)
 
 
-def surprise_client(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    if db[update.effective_chat.id].get("surprise"):
-        db[update.effective_chat.id]["surprise"] = False
-        message = f'Ооооп! Вот Ваш торт) {db[update.effective_chat.id]["cakes"][db[update.effective_chat.id]["n_cakes"]]}'
+def surprise_client(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if db["temp"].get("surprise_flag"):
+        db["temp"]["surprise_flag"] = False
+        message = f'Ооооп! Вот Ваш торт) {db["current_order"][db["temp"]["n_cakes"]]}'
         keyboard = [
             [telegram.KeyboardButton("Каталог тортов")],
             [
@@ -191,55 +226,49 @@ def surprise_client(update: telegram.Update, context: telegram.ext.CallbackConte
         ]
         show_the_keyboard(update, context, keyboard, message)
     else:
-        db[update.effective_chat.id]["surprise"] = True
-        if db[update.effective_chat.id].get("surprise"):
-            add_cake(update, context, arg, save_to)
+        db["temp"]["surprise_flag"] = True
+        customise_cake(update, context)
 
 
-def add_cake(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    if not db[update.effective_chat.id].get("cakes"):
-        db[update.effective_chat.id]["cakes"][1] = {
-                "Заказ №": db[update.effective_chat.id],
-                "Торт №": 1,
+def customise_cake(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db.get("current_order"):
+        db["temp"]["new_cake_flag"] = False
+        db["current_order"][1] = {
+                "Заказчик №": update.effective_chat.id,
                 "Дата": datetime.datetime.date,
                 "Время": datetime.datetime.time,
-                "Количество уровней": {},
-                "Форма": {},
-                "Топпинг": {},
-                "Ягоды": {},
-                "Декор": {},
-                "Надпись": {},
+                "Комплектация": {
+                },
                 "Итоговая стоимость": 0,
         }
-        db[update.effective_chat.id]["actual_cake_id"] = 1
-        db[update.effective_chat.id]["n_cakes"] = 1
-    elif db[update.effective_chat.id].get("cakes"):
-        n_cake = db[update.effective_chat.id]["n_cakes"] + 1
-        db[update.effective_chat.id]["cakes"][n_cake] = {
-                "Заказ №": db[update.effective_chat.id],
-                "Торт №": n_cake,
+        db["temp"]["actual_cake_id"] = 1
+        db["temp"]["n_cakes"] = 1
+    elif db.get("current_order") and db["temp"]["new_cake_flag"]:
+        db["temp"]["new_cake_flag"] = False
+        n_cake = db["temp"]["n_cakes"] + 1
+        db["current_order"][n_cake] = {
+                "Заказчик №": update.effective_chat.id,
                 "Дата": datetime.datetime.date,
                 "Время": datetime.datetime.time,
-                "Количество уровней": {},
-                "Форма": {},
-                "Топпинг": {},
-                "Ягоды": {},
-                "Декор": {},
-                "Надпись": {},
+                "Комплектация": {
+                },
                 "Итоговая стоимость": 0,
         }
-        db[update.effective_chat.id]["actual_cake_id"] = n_cake
-        db[update.effective_chat.id]["n_cakes"] = n_cake
-    if db[update.effective_chat.id].get("surprise"):
-        surprise_client(update, context, arg, save_to)
+        db["temp"]["actual_cake_id"] = n_cake
+        db["temp"]["n_cakes"] = n_cake
+    if db["temp"].get("surprise_flag"):
+        surprise_client(update, context)
     else:
-        choose_size(update, context, arg, save_to)
+        choose_size(update, context)
 
 
-def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Выберите количество уровней торта:"
     keyboard = [
-        [telegram.KeyboardButton("Каталог тортов")],
+        [
+            telegram.KeyboardButton("Каталог тортов"),
+            telegram.KeyboardButton("Удивите меня"),
+        ],
         [
             telegram.KeyboardButton("1 уровень\n(+400р)"),
             telegram.KeyboardButton("2 уровня\n(+750р)"),
@@ -250,7 +279,7 @@ def choose_size(update: telegram.Update, context: telegram.ext.CallbackContext, 
     show_the_keyboard(update, context, keyboard, message)
 
 
-def choose_form(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def choose_form(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Выберите желаемую форму:"
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору количества уровней")],
@@ -264,7 +293,7 @@ def choose_form(update: telegram.Update, context: telegram.ext.CallbackContext, 
     show_the_keyboard(update, context, keyboard, message)
 
 
-def choose_topping(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def choose_topping(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Добавьте топпинг по вкусу:"
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору формы")],
@@ -278,12 +307,12 @@ def choose_topping(update: telegram.Update, context: telegram.ext.CallbackContex
             telegram.KeyboardButton("Клубничный сироп\n(+300р)"),
             telegram.KeyboardButton("Черничный сироп\n(+350р)"),
         ],
-        [telegram.KeyboardButton("Без топпингов")],
+        [telegram.KeyboardButton("Без топпингов\n(+0р)")],
     ]
     show_the_keyboard(update, context, keyboard, message)
 
 
-def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Добавьте свежих ягод:"
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору топпинга")],
@@ -293,7 +322,7 @@ def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContex
             telegram.KeyboardButton("Голубика\n(+450р)"),
             telegram.KeyboardButton("Клубника\n(+500р)"),
         ],
-        [telegram.KeyboardButton("Без ягод")],
+        [telegram.KeyboardButton("Без ягод\n(+0р)")],
         [
             telegram.KeyboardButton("Оформить заказ"),
             telegram.KeyboardButton("Собрать ещё один торт"),
@@ -303,7 +332,7 @@ def choose_berries(update: telegram.Update, context: telegram.ext.CallbackContex
     show_the_keyboard(update, context, keyboard, message)
 
 
-def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext):
     message = "Добавьте съедобное украшение:"
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору ягод")],
@@ -318,7 +347,7 @@ def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext,
             telegram.KeyboardButton("Фундук\n(+350р)"),
             telegram.KeyboardButton("Безе\n(+400р)"),
         ],
-        [telegram.KeyboardButton("Без декора")],
+        [telegram.KeyboardButton("Без декора\n(+0р)")],
         [
             telegram.KeyboardButton("Оформить заказ"),
             telegram.KeyboardButton("Собрать ещё один торт"),
@@ -328,7 +357,7 @@ def choose_decor(update: telegram.Update, context: telegram.ext.CallbackContext,
     show_the_keyboard(update, context, keyboard, message)
 
 
-def specify_label(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
+def specify_label(update: telegram.Update, context: telegram.ext.CallbackContext):
     context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Мы можем разместить на торте любую надпись, например: «С днем рождения!»"
@@ -337,8 +366,8 @@ def specify_label(update: telegram.Update, context: telegram.ext.CallbackContext
     keyboard = [
         [telegram.KeyboardButton("Вернуться к выбору декора")],
         [
-            telegram.KeyboardButton("Без надписи"),
-            telegram.KeyboardButton("Хочу надпись!\n(+500)"),
+            telegram.KeyboardButton("Без надписи\n(+0р)"),
+            telegram.KeyboardButton("Хочу надпись!\n(+500р)"),
         ],
         [
             telegram.KeyboardButton("Оформить заказ"),
@@ -349,13 +378,19 @@ def specify_label(update: telegram.Update, context: telegram.ext.CallbackContext
     show_the_keyboard(update, context, keyboard, message)
 
 
-def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    if not arg:
+def get_label(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db["temp"]["label_flag"] = True
+    specify_order(update, context)
+
+
+def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext):
+    if not db["temp"]["specify_order_flag"]:
         context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Почти всё! Осталось уточнить детали доставки или же... можно собрать ещё один торт)"
         )
-    message = "Чтобы уточнить детали, нажмите кнопку, а затем отправьте сообщением соответствующую информацию."
+        db["temp"]["specify_order_flag"] = True
+    message = "Чтобы уточнить детали, выберите соответствующий пункт меню, а затем отправьте информацию сообщением."
     keyboard = [
         [
             telegram.KeyboardButton("Изменить детали торта"),
@@ -365,7 +400,7 @@ def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext
             telegram.KeyboardButton("Адрес доставки"),
             telegram.KeyboardButton("Дата доставки"),
             telegram.KeyboardButton("Время доставки"),
-            telegram.KeyboardButton("Оставить коммент"),
+            telegram.KeyboardButton("Коммент"),
         ],
         [
             telegram.KeyboardButton("Основное меню"),
@@ -375,23 +410,64 @@ def specify_order(update: telegram.Update, context: telegram.ext.CallbackContext
     show_the_keyboard(update, context, keyboard, message)
 
 
-def verify_order(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    message = f'Спецификация заказа: {db[update.effective_chat.id]["cakes"]}'
+def verify_order(update: telegram.Update, context: telegram.ext.CallbackContext):
+    message = f'Спецификация заказа: {db["current_order"]}'
     keyboard = [
+        [telegram.KeyboardButton("Уточнить детали доставки")],
         [telegram.KeyboardButton("Подтвердить и оплатить")],
         [telegram.KeyboardButton("Основное меню")],
     ]
     show_the_keyboard(update, context, keyboard, message)
 
 
-def get_payment(update: telegram.Update, context: telegram.ext.CallbackContext, arg, save_to):
-    if not db[update.effective_chat.id]["user"].get("permission"):
-        get_pd_permission(update, context, arg, save_to)
+def get_payment(update: telegram.Update, context: telegram.ext.CallbackContext):
+    db["temp"]["ready_to_pay"] = True
+    if not db["user"].get("permission"):
+        get_pd_permission(update, context)
     else:
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Здесь должны быть данные для оплаты заказа."
-        )
+        message = "Здесь должны быть данные для оплаты заказа."
+        keyboard = [
+            [telegram.KeyboardButton("Уточнить детали доставки")],
+            [telegram.KeyboardButton("Оплата")],
+            [telegram.KeyboardButton("Основное меню")],
+        ]
+        show_the_keyboard(update, context, keyboard, message)
+
+
+def archive_the_order(update: telegram.Update, context: telegram.ext.CallbackContext):
+    for order, details in db["current_order"].items():
+        db["orders"][order] = details
+    db["current_order"] = {}
+    db["temp"] = {
+        "last_choice": "",
+        "last_mssg": "",
+        "n_cakes": 0,
+        "actual_cake_id": 0,
+        "new_cake_flag": True,
+        "surprise_flag": False,
+        "specify_order_flag": False,
+        "ready_to_pay": False,
+        "waiting_for_delivery": True,
+    }
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Ваш заказ оформлен. Ожидайте доставки."
+    )
+    pprint(db)
+    return show_menu(update, context)
+
+
+def save_choise(update: telegram.Update, context: telegram.ext.CallbackContext, price, save_to):
+    db["current_order"][db["temp"]["actual_cake_id"]]["Комплектация"][save_to] = price
+    pprint(db)
+
+
+def save_mssg(update: telegram.Update, context: telegram.ext.CallbackContext, save_to):
+    db["current_order"][save_to] = db["temp"]["last_mssg"]
+    db["temp"]["last_mssg"] = ""
+    db["temp"]["last_choice"] = ""
+    db["temp"]["label_flag"] = False
+    pprint(db)
 
 
 def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackContext, keyboard, message):
@@ -404,283 +480,251 @@ def show_the_keyboard(update: telegram.Update, context: telegram.ext.CallbackCon
 
 
 def launch_next_step(update: telegram.Update, context: telegram.ext.CallbackContext):
-    user_choice = update.message.text
-    print("user_choise", user_choice)
+    if not DB:
+        return start(update, context)
+    last_input = update.message.text
     triggers = {
         "Согласие на обработку ПД": {
-                "next_func": get_pd_permission,
-                "arg": None,
-                "save_to": None
+            "next_func": get_pd_permission,
         },
         "Каталог тортов": {
-                "next_func": show_catalogue,
-                "arg": None,
-                "save_to": None,
+            "next_func": show_catalogue,
         },
         "Основное меню": {
-                "next_func": show_menu,
-                "arg": None,
-                "save_to": None,
+            "next_func": show_menu,
         },
         "Разрешаю обработку моих ПД.": {
-                "next_func": if_allowed,
-                "arg": None,
-                "save_to": None,
+            "next_func": if_allowed,
         },
         "Не разрешаю обработку моих ПД.": {
-                "next_func": if_forbidden,
-                "arg": None,
-                "save_to": None,
+            "next_func": if_forbidden,
         },
         "Собрать торт": {
-                "next_func": add_cake,
-                "arg": None,
-                "save_to": None,
+            "next_func": customise_cake,
         },
         "Посмотреть текуший заказ": {
-                "next_func": show_current_order,
-                "arg": None,
-                "save_to": None,
+            "next_func": show_current_order,
         },
         "Повторить прошлый заказ": {
-                "next_func": repeat_order,
-                "arg": None,
-                "save_to": None,
+            "next_func": repeat_order,
         },
         "Удивите меня": {
-                "next_func": surprise_client,
-                "arg": None,
-                "save_to": None,
+            "next_func": surprise_client,
         },
         "Связаться с нами": {
-                "next_func": contact_support,
-                "arg": None,
-                "save_to": None,
+            "next_func": contact_support,
         },
         "Оформить заказ": {
-                "next_func": specify_order,
-                "arg": None,
-                "save_to": None,
+            "next_func": specify_order,
         },
         "Собрать ещё один торт": {
-                "next_func": add_cake,
-                "arg": None,
-                "save_to": None,
+            "next_func": add_new_cake,
         },
         "1 уровень\n(+400р)": {
-                "next_func": choose_form,
-                "arg": 400,
-                "save_to": "Количество уровней",
+            "next_func": choose_form,
+            "price": 400,
+            "save_to": "Количество уровней",
         },
         "2 уровня\n(+750р)": {
-                "next_func": choose_form,
-                "arg": 750,
-                "save_to": "Количество уровней",
+            "next_func": choose_form,
+            "price": 750,
+            "save_to": "Количество уровней",
         },
         "3 уровня\n(+1100р)": {
-                "next_func": choose_form,
-                "arg": 1100,
-                "save_to": "Количество уровней",
+            "next_func": choose_form,
+            "price": 1100,
+            "save_to": "Количество уровней",
         },
         "Вернуться к выбору количества уровней": {
-                "next_func": choose_size,
-                "arg": None,
-                "save_to": None,
+            "next_func": choose_size,
         },
         "Круг\n(+400р)": {
-                "next_func": choose_topping,
-                "arg": 400,
-                "save_to": "Форма",
+            "next_func": choose_topping,
+            "price": 400,
+            "save_to": "Форма",
         },
         "Квадрат\n(+600р)": {
-                "next_func": choose_topping,
-                "arg": 600,
-                "save_to": "Форма",
+            "next_func": choose_topping,
+            "price": 600,
+            "save_to": "Форма",
         },
         "Прямоугольник\n(+1000р)": {
-                "next_func": choose_topping,
-                "arg": 1000,
-                "save_to": "Форма",
+            "next_func": choose_topping,
+            "price": 1000,
+            "save_to": "Форма",
         },
         "Вернуться к выбору формы": {
-                "next_func": choose_form,
-                "arg": None,
-                "save_to": None,
+            "next_func": choose_form,
         },
         "Карамельный сироп\n(+180р)": {
-                "next_func": choose_berries,
-                "arg": 180,
-                "save_to": "Топпинг",
+            "next_func": choose_berries,
+            "price": 180,
+            "save_to": "Топпинг",
         },
         "Кленовый сироп\n(+200р)": {
-                "next_func": choose_berries,
-                "arg": 200,
-                "save_to": "Топпинг",
+            "next_func": choose_berries,
+            "price": 200,
+            "save_to": "Топпинг",
         },
         "Белый соус\n(+200р)": {
-                "next_func": choose_berries,
-                "arg": 200,
-                "save_to": "Топпинг",
+            "next_func": choose_berries,
+            "price": 200,
+            "save_to": "Топпинг",
         },
         "Молочный шоколад\n(+200р)": {
-                "next_func": choose_berries,
-                "arg": 200,
-                "save_to": "Топпинг",
+            "next_func": choose_berries,
+            "price": 200,
+            "save_to": "Топпинг",
         },
         "Клубничный сироп\n(+300р)": {
-                "next_func": choose_berries,
-                "arg": 300,
-                "save_to": "Топпинг",
+            "next_func": choose_berries,
+            "price": 300,
+            "save_to": "Топпинг",
         },
         "Черничный сироп\n(+350р)": {
-                "next_func": choose_berries,
-                "arg": 350,
-                "save_to": "Топпинг",
+            "next_func": choose_berries,
+            "price": 350,
+            "save_to": "Топпинг",
         },
-        "Без топпингов": {
-                "next_func": choose_berries,
-                "arg": 0,
-                "save_to": "Топпинг",
+        "Без топпингов\n(+0р)": {
+            "next_func": choose_berries,
+            "price": 0,
+            "save_to": "Топпинг",
         },
         "Вернуться к выбору топпинга": {
-                "next_func": choose_topping,
-                "arg": None,
-                "save_to": None,
+            "next_func": choose_topping,
         },
         "Малина\n(+300р)": {
-                "next_func": choose_decor,
-                "arg": 300,
-                "save_to": "Ягоды",
+            "next_func": choose_decor,
+            "price": 300,
+            "save_to": "Ягоды",
         },
         "Ежевика\n(+400р)": {
-                "next_func": choose_decor,
-                "arg": 400,
-                "save_to": "Ягоды",
+            "next_func": choose_decor,
+            "price": 400,
+            "save_to": "Ягоды",
         },
         "Голубика\n(+450р)": {
-                "next_func": choose_decor,
-                "arg": 450,
-                "save_to": "Ягоды",
+            "next_func": choose_decor,
+            "price": 450,
+            "save_to": "Ягоды",
         },
         "Клубника\n(+500р)": {
-                "next_func": choose_decor,
-                "arg": 500,
-                "save_to": "Ягоды",
+            "next_func": choose_decor,
+            "price": 500,
+            "save_to": "Ягоды",
         },
-        "Без ягод": {
-                "next_func": choose_decor,
-                "arg": 0,
-                "save_to": "Ягоды",
+        "Без ягод\n(+0р)": {
+            "next_func": choose_decor,
+            "price": 0,
+            "save_to": "Ягоды",
         },
         "Вернуться к выбору ягод": {
-                "next_func": choose_berries,
-                "arg": None,
-                "save_to": None,
+            "next_func": choose_berries,
         },
         "Маршмеллоу\n(+200р)": {
-                "next_func": specify_label,
-                "arg": 200,
-                "save_to": "Декор",
+            "next_func": specify_label,
+            "price": 200,
+            "save_to": "Декор",
         },
         "Марципан\n(+280р)": {
-                "next_func": specify_label,
-                "arg": 280,
-                "save_to": "Декор",
+            "next_func": specify_label,
+            "price": 280,
+            "save_to": "Декор",
         },
         "Фисташки\n(+300р)": {
-                "next_func": specify_label,
-                "arg": 300,
-                "save_to": "Декор",
+            "next_func": specify_label,
+            "price": 300,
+            "save_to": "Декор",
         },
         "Пекан\n(+300р)": {
-                "next_func": specify_label,
-                "arg": 300,
-                "save_to": "Декор",
+            "next_func": specify_label,
+            "price": 300,
+            "save_to": "Декор",
         },
         "Фундук\n(+350р)": {
-                "next_func": specify_label,
-                "arg": 350,
-                "save_to": "Декор",
+            "next_func": specify_label,
+            "price": 350,
+            "save_to": "Декор",
         },
         "Безе\n(+400р)": {
-                "next_func": specify_label,
-                "arg": 400,
-                "save_to": "Декор",
+            "next_func": specify_label,
+            "price": 400,
+            "save_to": "Декор",
         },
-        "Без декора": {
-                "next_func": specify_label,
-                "arg": 0,
-                "save_to": "Декор",
+        "Без декора\n(+0р)": {
+            "next_func": specify_label,
+            "price": 0,
+            "save_to": "Декор",
         },
         "Вернуться к выбору декора": {
-                "next_func": choose_decor,
-                "arg": None,
-                "save_to": None,
+            "next_func": choose_decor,
         },
-        "Без надписи": {
-                "next_func": specify_order,
-                "arg": 0,
-                "save_to": "Надпись",
+        "Без надписи\n(+0р)": {
+            "next_func": specify_order,
+            "price": 0,
+            "save_to": "Надпись",
         },
-        "Хочу надпись!\n(+500)": {
-                "next_func": specify_order,
-                "arg": 500,
-                "save_to": "Надпись",
+        "Хочу надпись!\n(+500р)": {
+            "next_func": get_label,
+            "price": 500,
+            "save_to": "Надпись",
         },
         "Изменить детали торта": {
-                "next_func": specify_label,
-                "arg": None,
-                "save_to": None,
+            "next_func": specify_label,
         },
         "Адрес доставки": {
-                "next_func": specify_order,
-                "arg": db[update.effective_chat.id]["previous_user_choice"],
-                "save_to": "Адрес доставки",
+            "next_func": specify_order,
+            "save_to": "Адрес доставки",
         },
         "Дата доставки": {
-                "next_func": specify_order,
-                "arg": db[update.effective_chat.id]["previous_user_choice"],
-                "save_to": "Дата доставки",
+            "next_func": specify_order,
+            "save_to": "Дата доставки",
         },
         "Время доставки": {
-                "next_func": specify_order,
-                "arg": db[update.effective_chat.id]["previous_user_choice"],
-                "save_to": "Время доставки",
+            "next_func": specify_order,
+            "save_to": "Время доставки",
         },
-        "Оставить комментарий": {
-                "next_func": specify_order,
-                "arg": db[update.effective_chat.id]["previous_user_choice"],
-                "save_to": "Комментарий",
+        "Коммент": {
+            "next_func": specify_order,
+            "save_to": "Комментарий",
+        },
+        "Уточнить детали доставки": {
+            "next_func": specify_order,
         },
         "Оплатить заказ": {
-                "next_func": verify_order,
-                "arg": None,
-                "save_to": None,
+            "next_func": verify_order,
         },
         "Подтвердить и оплатить": {
-                "next_func": get_payment,
-                "arg": None,
-                "save_to": None,
+            "next_func": get_payment,
         },
+        "Оплата": {
+            "next_func": archive_the_order,
+        },
+        "Где мой заказ?": {
+            "next_func": find_my_order,
+        }
     }
-    if triggers.get(user_choice):
-        print("000")
-        if not db:
-            print("111")
-            start(update, context)
+    if triggers.get(last_input):
+        price = triggers[last_input].get("price")
+        save_to = triggers[last_input].get("save_to")
+        if triggers[last_input].get("price") and triggers[last_input].get("save_to"):
+            save_choise(update, context, price, save_to)
+        elif triggers[last_input].get("save_to"):
+            db["temp"]["last_choice"] = last_input
         else:
-            print("222")
-            db[update.effective_chat.id]["previous_user_choice"] = user_choice
-            arg = triggers[user_choice]["arg"]
-            save_to = triggers[user_choice]["save_to"]
-            triggers[user_choice]["next_func"](update, context, arg, save_to)
+            db["temp"]["last_choice"] = ""
+        triggers[last_input]["next_func"](update, context)
     else:
-        print("333")
-        if db:
-            print("444")
-            db[update.effective_chat.id]["cakes"][triggers["user_choice"]['save_to']] = user_choice
-            print(db[update.effective_chat.id]["cakes"][triggers["user_choice"]['save_to']])
-
+        if db["temp"].get("label_flag"):
+            db["temp"]["last_mssg"] = last_input
+            save_to = "Текст надписи"
+            save_mssg(update, context, save_to)
+        elif db["temp"].get("last_choice"):
+            db["temp"]["last_mssg"] = last_input
+            save_to = triggers[db["temp"]["last_choice"]].get("save_to")
+            save_mssg(update, context, save_to)
+        
 
 def main():
     load_dotenv()
